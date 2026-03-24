@@ -1,0 +1,76 @@
+version: "3.9"
+
+# ════════════════════════════════════════════════════════════════
+#  Red interna compartida por todos los servicios
+# ════════════════════════════════════════════════════════════════
+networks:
+  microservices-net:
+    driver: bridge
+
+# ════════════════════════════════════════════════════════════════
+#  Servicios
+# ════════════════════════════════════════════════════════════════
+services:
+
+  # ── ProductService ────────────────────────────────────────────
+  product-service:
+    build:
+      context: ./ProductService
+      dockerfile: Dockerfile
+    container_name: product-service
+    networks:
+      - microservices-net
+    expose:
+      - "8080"            # solo visible internamente
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/products || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ── CustomerService ───────────────────────────────────────────
+  customer-service:
+    build:
+      context: ./CustomerService
+      dockerfile: Dockerfile
+    container_name: customer-service
+    networks:
+      - microservices-net
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/customers || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ── OrderService ──────────────────────────────────────────────
+  order-service:
+    build:
+      context: ./OrderService
+      dockerfile: Dockerfile
+    container_name: order-service
+    networks:
+      - microservices-net
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/orders || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ── API Gateway (YARP) ────────────────────────────────────────
+  gateway:
+    build:
+      context: ./Gateway
+      dockerfile: Dockerfile
+    container_name: gateway
+    networks:
+      - microservices-net
+    ports:
+      - "5000:8080"       # único punto de entrada desde el host
+    depends_on:
+      - product-service
+      - customer-service
+      - order-service
